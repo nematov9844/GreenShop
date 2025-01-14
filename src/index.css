@@ -1,0 +1,92 @@
+/** @format */
+
+/* Google Fonts Roboto */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+body {
+  font-family: 'Roboto', sans-serif;
+}
+
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+/* Custom CSS for dots */
+.ant-carousel .slick-dots {
+  bottom: 20px;
+ /* Dotsni pastga joylashtirish */;
+} 
+.ant-carousel .slick-dots li button {
+  background-color: rgb(142, 129, 125);
+ /* Default dot color */
+  width: 8px;
+ /* Dotning kengligi */
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0.7;
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.ant-carousel .slick-dots li.slick-active button {
+  background-color: rgb(50, 205, 50);
+ /* Active dot color */
+  opacity: 1;
+}
+@media screen and (max-width: 320px) {
+  .ant-carousel .slick-dots {
+    bottom: 10px;
+   /* Dotsni pastga joylashtirish */;
+  } 
+}  
+
+
+.custom-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.custom-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card-image-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover-icons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  padding: 10px;
+  gap: 15px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-image-container:hover .card-hover-icons {
+  opacity: 1;
+}
+
+.hover-icon {
+  font-size: 24px;
+  color: #3D3D3D;
+  cursor: pointer;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.hover-icon:hover {
+  transform: scale(1.2);
+  color: white; /* Highlight color */
+}
+
