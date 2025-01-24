@@ -7,66 +7,68 @@ import { useAxios } from "../../hook/useAxios";
 import { useReduxDispatch } from "../../hook/useRedux";
 import { setLogin } from "../../redux/loginData";
 import { useState } from "react";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../config/firebaseConfig";  // Firebase config import
+import { signInWithPopup, UserCredential } from "firebase/auth";
+import { auth, googleProvider } from "../../config/firebaseConfig"; // Firebase config import
+
+interface RegisterFormValues {
+  name: string;
+  surname: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+}
 
 export default function Register() {
   const axios = useAxios();
   const dispatch = useReduxDispatch();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleFinish = async (values) => {
+  const handleFinish = async (values: RegisterFormValues): Promise<void> => {
     setLoading(true);
-    axios({
-      url: "/user/sign-up",
-      method: "POST",
-      body: {
-        name: values.name,
-        surname: values.surname,
-        password: values.password,
-        email: values.email,
-      },
-    })
-      .then((res) => {
-        console.log(res.data);
-        localStorage.setItem("token", res.data.token);
-        dispatch(setLogin(res.data));
-        message.success("Ro'yxatdan o'tish muvaffaqiyatli!");
-      })
-      .catch((error) => {
-        console.error(error);
-        message.error("Ro'yxatdan o'tishda xatolik yuz berdi!");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await axios({
+        url: "/user/sign-up",
+        method: "POST",
+        body: {
+          name: values.name,
+          surname: values.surname,
+          password: values.password,
+          email: values.email,
+        },
+      });
+      localStorage.setItem("token", res.data.token);
+      dispatch(setLogin(res.data));
+      message.success("Ro'yxatdan o'tish muvaffaqiyatli!");
+    } catch (error) {
+      console.error(error);
+      message.error("Ro'yxatdan o'tishda xatolik yuz berdi!");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleRegister = async () => {
-    signInWithPopup(auth, googleProvider)
-      .then((result) => {
-        const user = result.user;
-        console.log("Google foydalanuvchi ma'lumotlari:", user);
-        localStorage.setItem("token", user.accessToken);
+  const handleGoogleRegister = async (): Promise<void> => {
+    try {
+      const result: UserCredential = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
+      const user = result.user;
+      console.log("Google foydalanuvchi ma'lumotlari:", user);
 
-        axios({
-          url: "/user/sign-up/google",
-          method: "POST",
-          body: {
-            email: user.email,
-          },
-        })
-          .then((res) => {
-            dispatch(setLogin(res.data));
-            message.success("Google orqali muvaffaqiyatli ro'yxatdan o'tdingiz!");
-          })
-          .catch((error) => {
-            console.error(error);
-            message.error("Serverda xatolik yuz berdi!");
-          });
-      })
-      .catch((error) => {
-        console.error(error);
-        message.error("Google orqali ro'yxatdan o'tishda xatolik yuz berdi!");
+      localStorage.setItem("token", token);
+
+      const res = await axios({
+        url: "/user/sign-up/google",
+        method: "POST",
+        body: {
+          email: user.email,
+        },
       });
+      dispatch(setLogin(res.data));
+      message.success("Google orqali muvaffaqiyatli ro'yxatdan o'tdingiz!");
+    } catch (error) {
+      console.error(error);
+      message.error("Google orqali ro'yxatdan o'tishda xatolik yuz berdi!");
+    }
   };
 
   return (
@@ -98,7 +100,10 @@ export default function Register() {
 
         <Form.Item
           name="password"
-          rules={[{ required: true, message: "Please input your password!" }, { min: 8, message: "Password must be at least 8 characters long!" }]}
+          rules={[
+            { required: true, message: "Please input your password!" },
+            { min: 8, message: "Password must be at least 8 characters long!" },
+          ]}
         >
           <Input.Password className="h-[40px]" placeholder="Password" />
         </Form.Item>

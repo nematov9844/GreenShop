@@ -1,34 +1,62 @@
 import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../redux/store';
-import { removeFromCart, updateQuantity, addOrder, fetchCart, deleteCartItem } from '../redux/shopSlice';
+import { 
+   
+  fetchCart, 
+  removeFromCart,
+  updateCartQuantity
+} from '../redux/shopSlice';
 import { Button, Input, message, Spin, Space } from 'antd';
 import { DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Header from '../components/Header';
-import { Link } from 'react-router-dom';
-import { useReduxSelector } from '../hook/useRedux';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Cart() {
   const dispatch = useDispatch<AppDispatch>();
-  const { cart, loading } = useReduxSelector((state: RootState) => state.shop);
+  const navigate = useNavigate();
+  const {  cartProducts, loading } = useSelector((state: RootState) => state.shop);
   const { loginData } = useSelector((state: RootState) => state.loginData);
 
-
   useEffect(() => {
-    const getCartItems = async () => {
-      try {
-        const result = await dispatch(fetchCart()).unwrap();
-        console.log('Cart data:', result);
-      } catch (error) {
-        console.error('Failed to fetch cart:', error);
-        message.error('Failed to load cart items');
+    if (loginData) {
+      dispatch(fetchCart());
+    }
+  }, [dispatch, loginData]);
+
+  const handleQuantityChange = (id: string, quantity: number) => {
+    if (quantity > 0) {
+      dispatch(updateCartQuantity({ id, quantity }));
+    }
+  };
+
+  const handleRemoveItem = (id: string) => {
+    console.log(id);
+    try {
+      dispatch(removeFromCart(id));
+      message.success('Item removed from cart');
+    } catch (error) {
+      message.error('Failed to remove item');
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+      if (!loginData) {
+        message.error('Please login first');
+        return;
       }
-    };
 
-    getCartItems();
-  }, [dispatch]);
+      navigate('/checkout');
+    } catch (error) {
+      if (error instanceof Error) {
+        message.error(error.message);
+      } else {
+        message.error('Failed to proceed to checkout');
+      }
+    }
+  };
 
-  console.log('Current cart state:', cart);
 
   if (loading) {
     return (
@@ -41,7 +69,7 @@ export default function Cart() {
     );
   }
 
-  if (cart.length === 0) {
+  if (!cartProducts?.length) {
     return (
       <>
         <Header />
@@ -57,100 +85,12 @@ export default function Cart() {
     );
   }
 
-  const subtotal = cart.reduce((sum, item) => {
+  const subtotal = cartProducts?.reduce((sum, item) => {
     const price = item.discount ? Number(item.discount_price) : item.price;
     return sum + (price * (item.quantity || 1));
   }, 0);
   const shipping = 16.00;
   const total = subtotal + shipping;
-
-  const handleCheckout = async () => {
-    try {
-      if (!loginData) {
-        message.error('Please login first');
-        return;
-      }
-
-      const orderData = {
-        shop_list: cart.map(item => ({
-          _id: item._id,
-          count: item.quantity || 1
-        })),
-        extra_shop_info: {
-          total: total,
-          method: "cash-on-delivery"
-        },
-        billing_address: {
-          name: loginData.name,
-          surname: loginData.surname,
-          phone: loginData.phone || "+998901234567",
-          address: loginData.address || "Test Address",
-          city: loginData.city || "Test City",
-          country: loginData.country || "Uzbekistan",
-          zip_code: loginData.zip_code || "100000"
-        }
-      };
-
-      console.log('Checkout Data:', orderData);
-      await dispatch(addOrder(orderData)).unwrap();
-      message.success('Order placed successfully!');
-      dispatch(fetchCart());
-    } catch (error) {
-      console.error('Checkout Error:', error);
-      message.error('Failed to place order');
-    }
-  };
-
-  const handleDelete = async (orderId: string) => {
-    try {
-      console.log('Deleting order:', orderId);
-      await dispatch(deleteCartItem(orderId)).unwrap();
-      message.success('Item removed from cart');
-      await dispatch(fetchCart()).unwrap();
-    } catch (error) {
-      console.error('Delete Error:', error);
-      message.error('Failed to remove item');
-    }
-  };
-
-  const handleQuantityUpdate = async (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
-    try {
-      if (!loginData) {
-        message.error('Please login first');
-        return;
-      }
-
-      const orderData = {
-        shop_list: [{
-          _id: itemId,
-          count: newQuantity
-        }],
-        extra_shop_info: {
-          total: total,
-          method: "cash-on-delivery"
-        },
-        billing_address: {
-          name: loginData?.name || '',
-          surname: loginData?.surname || '',
-          phone: loginData?.phone || "+998901234567",
-          address: loginData?.address || "Test Address",
-          city: loginData?.city || "Test City",
-          country: loginData?.country || "Uzbekistan",
-          zip_code: loginData?.zip_code || "100000"
-        }
-      };
-
-      console.log('Updating quantity:', { itemId, newQuantity });
-      await dispatch(addOrder(orderData)).unwrap();
-      await dispatch(fetchCart()).unwrap();
-      message.success('Quantity updated');
-    } catch (error) {
-      console.error('Update Error:', error);
-      message.error('Failed to update quantity');
-    }
-  };
 
   return (
     <>
@@ -166,8 +106,8 @@ export default function Cart() {
         </div>
 
         <div className="p-4 space-y-4">
-          {cart.map((item) => (
-            <div key={`${item._id}_${item.orderId}`} className="flex gap-4 border-b pb-4">
+          {cartProducts?.map((item) => (
+            <div key={`${item._id}_${item.quantity}`} className="flex gap-4 border-b pb-4">
               <img 
                 src={item.main_image} 
                 alt={item.title} 
@@ -183,22 +123,22 @@ export default function Cart() {
                   <div className="flex items-center gap-2">
                     <button 
                       className="w-8 h-8 border rounded-full flex items-center justify-center"
-                      onClick={() => handleQuantityUpdate(item._id, (item.quantity || 1) - 1)}
+                      onClick={() => handleQuantityChange(item._id, (item.quantity || 1) - 1)}
                     >
                       -
                     </button>
                     <span>{item.quantity || 1}</span>
                     <button 
                       className="w-8 h-8 border rounded-full flex items-center justify-center"
-                      onClick={() => handleQuantityUpdate(item._id, (item.quantity || 1) + 1)}
+                      onClick={() => handleQuantityChange(item._id, (item.quantity || 1) + 1)}
                     >
                       +
                     </button>
                   </div>
                   <button 
                     onClick={() => {
-                      if (item.orderId) {
-                        handleDelete(item.orderId);
+                      if (item._id) {
+                        handleRemoveItem(item._id);
                       } else {
                         message.error('Cannot delete item: missing order ID');
                       }
@@ -225,7 +165,7 @@ export default function Cart() {
           <div className="space-y-2 mt-4">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>${subtotal?.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Coupon Discount</span>
@@ -274,50 +214,46 @@ export default function Cart() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cart.map((item) => (
-                    <tr key={`${item._id}_${item.orderId}`} className="border-b">
+                  {cartProducts?.map((item) => (
+                    <tr key={item._id} className="border-b">
                       <td className="py-4">
                         <div className="flex items-center gap-4">
                           <img 
                             src={item.main_image} 
                             alt={item.title} 
-                            className="w-20 h-20 object-cover rounded-lg"
+                            className="w-16 h-16 object-cover rounded"
                           />
-                          <h3 className="font-medium">{item.title}</h3>
+                          <div>
+                            <h3 className="font-medium">{item.title}</h3>
+                            <p className="text-sm text-gray-500">SKU: {item._id}</p>
+                          </div>
                         </div>
                       </td>
-                      <td className="text-center">{item.size || 'M'}</td>
+                      <td className="text-center">${item.discount ? item.discount_price : item.price}</td>
                       <td className="text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button 
-                            className="w-8 h-8 border rounded-full flex items-center justify-center"
-                            onClick={() => handleQuantityUpdate(item._id, (item.quantity || 1) - 1)}
+                          <Button 
+                            onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
                           >
                             -
-                          </button>
-                          <span>{item.quantity || 1}</span>
-                          <button 
-                            className="w-8 h-8 border rounded-full flex items-center justify-center"
-                            onClick={() => handleQuantityUpdate(item._id, (item.quantity || 1) + 1)}
+                          </Button>
+                          <span>{item.quantity}</span>
+                          <Button 
+                            onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
                           >
                             +
-                          </button>
+                          </Button>
                         </div>
                       </td>
-                      <td className="text-right">${item.price * (item.quantity || 1)}</td>
-                      <td className="text-right">
-                        <button 
-                          onClick={() => {
-                            if (item.orderId) {
-                              handleDelete(item.orderId);
-                            } else {
-                              message.error('Cannot delete item: missing order ID');
-                            }
-                          }}
-                          className="text-red-500"
-                        >
-                          <DeleteOutlined />
-                        </button>
+                      <td className="text-center">${((item.discount ? Number(item.discount_price) : item.price) * item.quantity).toFixed(2)}</td>
+                      <td className="text-center">
+                        <Button 
+                          type="text" 
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleRemoveItem(item._id)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -344,7 +280,7 @@ export default function Cart() {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>${subtotal?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Coupon Discount</span>

@@ -5,7 +5,7 @@ interface InitialStateTypes {
 }
 
 const initialState: InitialStateTypes = {
-  loginData: JSON.parse(localStorage.getItem("loginData")) || {}, 
+  loginData: JSON.parse(localStorage.getItem("loginData") as string) || {}, 
 };
 
 const loginSlice = createSlice({

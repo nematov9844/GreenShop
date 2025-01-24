@@ -4,7 +4,7 @@ import { useReduxDispatch, useReduxSelector } from "../hook/useRedux";
 import { outLogin } from "../redux/loginData";
 
 export default function Users() {
-  const { loginData } = useReduxSelector((state) => state.loginDataSlice);
+  const { loginData } = useReduxSelector((state) => state.loginData);
   const navigate = useNavigate();
   const dispatch = useReduxDispatch();
 

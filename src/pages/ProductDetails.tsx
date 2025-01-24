@@ -9,14 +9,14 @@ import Header from "../components/Header";
 import { AppDispatch, RootState } from '../redux/store';
 
 interface ProductType {
-    _id: string;
-    title: string;
-    main_image: string;
-    detailed_images: string[];
-    price: number;
-    discount: boolean;
-    discount_price: string;
-    description?: string;
+    _id?: string;
+    title?: string;
+    main_image?: string | undefined;
+    detailed_images?: string[];
+    price?: number;
+    discount?: boolean;
+    discount_price?: string | number;
+    description?: string | undefined;
     size?: string;
     sku?: string;
     category?: string;
@@ -25,7 +25,7 @@ interface ProductType {
 export default function ProductDetails() {
     const { id, category } = useParams();
     const [product, setProduct] = useState<ProductType | null>(null);
-    const [selectedImage, setSelectedImage] = useState<string>("");
+    const [selectedImage, setSelectedImage] = useState<string | undefined>("");
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(true);
     const axiosRequest = useAxios();
@@ -98,7 +98,7 @@ export default function ProductDetails() {
             </>
         );
     }
-    console.log(product)
+    
     const handleAddToCart = async () => {
         try {
             if (!loginData) {
@@ -112,12 +112,12 @@ export default function ProductDetails() {
             }
 
             await dispatch(addToCartAsync({
-                _id: product._id,
-                title: product.title,
-                main_image: product.main_image,
-                price: product.price,
-                discount: product.discount,
-                discount_price: product.discount_price
+                _id: product?._id,
+                title: product?.title,
+                main_image: product?.main_image,
+                price: product?.price,
+                discount: product?.discount,
+                discount_price: Number(product?.discount_price)
             })).unwrap();
 
             message.success('Added to cart');
@@ -128,6 +128,8 @@ export default function ProductDetails() {
     };
 
     const handleAddToWishlist = () => {
+        console.log(product);
+        
         dispatch(addToWishlist(product));
         message.success("Added to wishlist");
     };
@@ -147,7 +149,7 @@ export default function ProductDetails() {
 
                 <div className="flex flex-col lg:flex-row gap-8 justify-between w-full">
                     {/* Left Side - Images */}
-                    <div className="w-full flex flex-row-reverse justify-between  lg:w-1/2">
+                    <div className="w-full flex flex-row-reverse justify-between lg:w-1/2">
                         <div className="mb-4 w-full bg-gray-100 flex justify-center items-center p-4">
                             <Image
                                 src={selectedImage}
@@ -174,7 +176,7 @@ export default function ProductDetails() {
                                 ))
                             ) : (
                                 <button
-                                    onClick={() => setSelectedImage(product.main_image)}
+                                    onClick={() => setSelectedImage(product?.main_image)}
                                     className="border rounded-lg p-1 md:p-2 border-green"
                                 >
                                     <img
@@ -210,8 +212,11 @@ export default function ProductDetails() {
                         </div>
 
                         <p className="text-gray-600 mb-6">
-                            {product?.description || "The ceramic cylinder planters come with a wooden stand to help elevate your plants off the ground."}
-                        </p>
+  {product?.description && product.description.length > 20
+    ? product.description.slice(0, 20)
+    : "The ceramic cylinder planters come with a wooden stand to help elevate your plants off the ground."}
+</p>
+
 
                         {/* Quantity and Buttons */}
                         <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">

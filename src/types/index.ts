@@ -10,5 +10,5 @@ export interface ProductType {
   main_image: string;
   price: number;
   discount: boolean;
-  discount_price: string;
+  discount_price: string | number;
 } 

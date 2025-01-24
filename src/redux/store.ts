@@ -8,16 +8,23 @@ import loginDataSlice from "./loginDataSlice";
 import shopReducer from './shopSlice';
 import productReducer from './productSlice';
 
-// Persist konfiguratsiyasi
-const persistConfig = {
-	key: 'root',
+// Shop reducer uchun persist config
+const shopPersistConfig = {
+	key: 'shop',		
 	storage,
-	whitelist: ['loginData', 'shop'] // Faqat bu reducer'lar saqlanadi
+	whitelist: ['cart', 'wishlist'], // Faqat cart va wishlist saqlanadi
 };
 
-// Har bir reducer uchun persist wrapper
-const persistedLoginReducer = persistReducer(persistConfig, loginDataSlice);
-const persistedShopReducer = persistReducer(persistConfig, shopReducer);
+// Login reducer uchun persist config
+const loginPersistConfig = {
+	key: 'login',
+	storage,
+	whitelist: ['loginData']
+};
+
+// Reducer'larni persist qilish
+const persistedLoginReducer = persistReducer(loginPersistConfig, loginDataSlice);
+const persistedShopReducer = persistReducer(shopPersistConfig, shopReducer);
 
 export const store = configureStore({
 	reducer: {
@@ -28,7 +35,9 @@ export const store = configureStore({
 	},
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
-			serializableCheck: false,
+			serializableCheck: {
+				ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+			},
 		}),
 });
 

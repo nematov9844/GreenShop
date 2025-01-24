@@ -23,7 +23,6 @@ export default function CategorySidebar({
   priceRange,
   setPriceRange,
   filterProductsByPrice,
-  allProductsCount
 }: CategorySidebarProps) {
   return (
     <div className="w-[260px] flex-shrink-0">
@@ -52,9 +51,9 @@ export default function CategorySidebar({
         <h3 className="font-medium mb-4">Price Range</h3>
         <Slider
           range
-          defaultValue={priceRange}
+          defaultValue={[0, 100]}
           min={0}
-          max={1000}
+          max={100}
           onChange={(value: number[]) => setPriceRange(value as [number, number])}
         />
         <div className="flex justify-between mt-2">

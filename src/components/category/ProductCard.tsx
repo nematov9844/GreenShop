@@ -1,41 +1,67 @@
 import { HeartOutlined, ShoppingCartOutlined, EyeOutlined } from "@ant-design/icons";
 import { message } from "antd";
 import { useDispatch } from 'react-redux';
-import { addToCartAsync } from '../../redux/shopSlice';
-import { addToWishlist, setSelectedProduct } from '../../redux/shopSlice';
+import { addToCart } from '../../redux/shopSlice';
+import { addToWishlist } from '../../redux/shopSlice';
 import { setProducts } from '../../redux/productSlice';
 import { Link } from 'react-router-dom';
-
-interface ProductType {
-  _id: string;
-  title: string;
-  main_image: string;
-  price: number;
-  discount: boolean;
-  discount_price: string;
-  category_path?: string;
-}
+import { CartItem } from '../../redux/shopSlice';
 
 interface ProductCardProps {
-  product: ProductType;
+  product: { 
+    _id: string; 
+    title: string; 
+    price: number; 
+    discount?: boolean; 
+    discount_price?: number; 
+    main_image: string; 
+    category_path?: string;
+    size?: string;
+  };
   onViewProduct: () => void;
 }
 
-export default function ProductCard({ product, onViewProduct }: ProductCardProps) {
+export default function ProductCard({ product }: ProductCardProps) {
   const dispatch = useDispatch();
-
+ const loginData = JSON.parse(localStorage.getItem("loginData") || "{}");
   const handleAddToCart = async () => {
     try {
-      await dispatch(addToCartAsync(product)).unwrap();
+      if (!loginData) {
+        message.error('Please login first');
+        return;
+      }
+      
+      const productWithCategory: CartItem = {
+        ...product,
+        category_path: product.category_path || 'house-plants',
+        quantity: 1,
+        discount: product.discount || false,
+        discount_price: Number(product.discount_price),
+        size: product.size || "M"
+      };
+      
+      dispatch(addToCart(productWithCategory));
       message.success('Added to cart');
     } catch (error) {
-      message.error('Failed to add to cart');
+      if (error instanceof Error) {
+        message.error(error.message);
+      } else {
+        message.error('Failed to add to cart');
+      }
     }
   };
 
   const handleAddToWishlist = () => {
-    dispatch(addToWishlist(product));
-    message.success('Added to wishlist');
+    try {
+      if (!loginData) {
+        message.error('Please login first');
+        return;
+      }
+      dispatch(addToWishlist({ ...product, discount: product.discount || false, discount_price: Number(product.discount_price) }));
+      message.success('Added to wishlist');
+    } catch (error) {
+      message.error('Failed to add to wishlist');
+    }
   };
 const saveProduct = () => {
     dispatch(setProducts(product))

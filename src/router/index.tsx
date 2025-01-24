@@ -1,27 +1,16 @@
 import { createBrowserRouter } from "react-router-dom";
 import Home from "../pages/Home";
+import Category from "../components/Category";
+import PrivateRoute from "../components/PrivateRoute";
 import Cart from "../pages/Cart";
 import Wishlist from "../pages/Wishlist";
 import User from "../pages/User";
-import PrivateRoute from "../components/PrivateRoute";
 import ProductDetails from "../pages/ProductDetails";
 import Checkout from "../pages/Checkout";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <Home />,
-  },
-  {
     path: "/cart",
-    element: (
-      <PrivateRoute>
-        <Cart />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/shop",
     element: (
       <PrivateRoute>
         <Cart />
@@ -56,4 +45,28 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
   },
+  {
+    path: "/shop",
+    element: (
+      <PrivateRoute>
+        <Cart />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/",
+    element: <Home />,
+    children: [
+      {
+        path: "/",
+        element: <Category />
+      },
+      {
+        path: "/category/:category",
+        element: <Category />
+      },
+      
+ 
+    ]
+  }
 ]); 

@@ -9,13 +9,6 @@ interface RegisterData extends LoginData {
   name: string;
 }
 
-interface AuthResponse {
-  user: {
-    email: string;
-    name?: string;
-  };
-  access_token: string;
-}
 
 export const useAuthApi = () => {
   const axiosRequest = useAxios();

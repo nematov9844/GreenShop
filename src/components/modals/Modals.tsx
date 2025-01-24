@@ -1,10 +1,9 @@
 /** @format */
 
-import React from "react";
 import { Modal } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
-import { setLoginModal, setRegisterModal } from "../../redux/modalSlice";
+import { setLoginModal,  } from "../../redux/modalSlice";
 import Login from "./Login";
 
 export default function Modals() {

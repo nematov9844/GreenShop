@@ -1,32 +1,21 @@
 import { Modal } from 'antd';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { useDispatch } from 'react-redux';
 import { addToCart } from '../../redux/shopSlice';
-import { useAxios } from "../../hook/useAxios";
+import { CartItem } from '../../redux/shopSlice';
 
-export default function ProductView({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const product = useSelector((state: RootState) => state.shop.selectedProduct);
+const ProductView = ({ product }: { product: { _id: string; main_image: string; title: string; discount?: boolean; discount_price?: number; price: number; description: string; category_path?: string; } }) => {
   const dispatch = useDispatch();
-  const axiosRequest = useAxios();
 
   if (!product) return null;
 
   const handleAddToCart = () => {
-    dispatch(addToCart(product));
-    onClose();
-  };
-
-  const fetchProductDetails = async (id: string) => {
-    return await axiosRequest({ 
-      url: `/flower/product/${id}`, 
-      method: "GET" 
-    });
+    dispatch(addToCart({ ...product, quantity: 1 } as CartItem));
   };
 
   return (
     <Modal
-      open={isOpen}
-      onCancel={onClose}
+      open={true}
+      onCancel={() => {}}
       footer={null}
       width={800}
       centered
@@ -55,4 +44,6 @@ export default function ProductView({ isOpen, onClose }: { isOpen: boolean; onCl
       </div>
     </Modal>
   );
-} 
+};
+
+export default ProductView; 

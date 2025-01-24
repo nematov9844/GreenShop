@@ -120,7 +120,7 @@ export default function Header() {
                 <Badge count={wishlist.length} className="ml-auto" />
               </Link>
 
-              {loginData?.name ? (
+              {loginData?.name || loginData?.displayName ?  (
                 <>
                   <Link 
                     to="/user" 
@@ -229,14 +229,14 @@ export default function Header() {
             <div className="w-[1px] h-8 bg-gray-200"></div>
 
             {/* Login/User */}
-            {loginData?.name ? (
+            {loginData ? (
               <div className="flex items-center gap-4">
                 <Link to="/user" className="text-gray-600 hover:text-green transition-colors">
-                  {loginData.name}
+                  {loginData.displayName || loginData.name}
                 </Link>
                 <button 
                   onClick={handleLogout}
-                  className="bg-green rounded-md px-3 py-1 border-green  hover:bg-green text-white transition-colors"
+                  className="bg-green rounded-md px-3 py-1 border-green hover:bg-green text-white transition-colors"
                 >
                   Logout
                 </button>

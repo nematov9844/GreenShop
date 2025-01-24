@@ -1,48 +1,67 @@
+// Axios bilan Upload komponentini sozlash
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import Header from '../components/Header';
-import { Tabs, Form, Input, Button, Upload, message } from 'antd';
+import { Form, Input, Button, message } from 'antd';
 import { UserOutlined, ShoppingOutlined, HeartOutlined, SettingOutlined } from '@ant-design/icons';
-import type { UploadProps } from 'antd';
-
-const { TabPane } = Tabs;
+import { useAxios } from '../hook/useAxios';
 
 interface UserFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  username: string;
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
+  _id?: string;
+  name?: string;
+  surname?: string | any;
+  email?: string;
+  phone_number?: string | any;
+  username?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  lastName?: string
+  phone?:string
 }
 
 export default function User() {
   const { loginData } = useSelector((state: RootState) => state.loginData);
   const [form] = Form.useForm();
+  const axios = useAxios();
 
   const handleSubmit = (values: UserFormData) => {
-    console.log('Form values:', values);
+    const updatedValues = {
+      _id: loginData?._id,
+      name: loginData?.name,
+      surname: values?.lastName || null,
+      phone_number: values?.phone || null,
+      email: values.email,
+      username: values.username,
+    };
+    console.log('Form values:', updatedValues);
     message.success('Profile updated successfully');
+    axios({
+      url: '/user/account-details',
+      method: 'POST',
+      body: updatedValues,
+    });
   };
-console.log(loginData)
-const uploadProps: UploadProps = {
-    name: 'photo',
-    action: 'http://localhost:8080/api/upload',
-    params:{
-		access_token: "64bebc1e2c6d3f056a8c85b7"
 
-    },
-    onChange(info) {
-      if (info.file.status === 'done') {
-        message.success(`${info.file.name} file uploaded successfully`);
-      } else if (info.file.status === 'error') {
-        message.error(`${info.file.name} file upload failed.`);
-      }
-    },
+  const handleUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+      const response = await axios({
+        url: '/upload',
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      message.success(`${file.name} uploaded successfully!`);
+      return response.data;
+    } catch (error) {
+      message.error(`${file.name} upload failed.`);
+    }
   };
-  
+
   return (
     <>
       <Header />
@@ -68,9 +87,7 @@ const uploadProps: UploadProps = {
                 <SettingOutlined />
                 <span>Support</span>
               </div>
-              <button className="text-red-500 hover:text-red-600 mt-4">
-                Logout
-              </button>
+              <button className="text-red-500 hover:text-red-600 mt-4">Logout</button>
             </div>
           </div>
 
@@ -84,7 +101,11 @@ const uploadProps: UploadProps = {
                 onFinish={handleSubmit}
                 initialValues={{
                   firstName: loginData?.name,
+                  lastName: loginData?.surname,
                   email: loginData?.email,
+                  phone_number: loginData?.phone_number,
+                  username: loginData?.username,
+                  photo: loginData?.photoURL,
                 }}
               >
                 <div className="grid grid-cols-2 gap-6">
@@ -109,77 +130,41 @@ const uploadProps: UploadProps = {
                     name="email"
                     rules={[
                       { required: true, message: 'Please input your email!' },
-                      { type: 'email', message: 'Please enter a valid email!' }
+                      { type: 'email', message: 'Please enter a valid email!' },
                     ]}
                   >
                     <Input />
                   </Form.Item>
 
-                  <Form.Item
-                    label="Phone Number"
-                    name="phone"
-                  >
+                  <Form.Item label="Phone Number" name="phone">
                     <Input addonBefore="+998" />
                   </Form.Item>
 
-                  <Form.Item
-                    label="Username"
-                    name="username"
-                  >
+                  <Form.Item label="User Name" name="username">
                     <Input />
                   </Form.Item>
 
-                  <Form.Item
-                    label="Photo"
-                    name="photo"
-                  >
+                  <Form.Item label="Photo" name="photo">
                     <div className="flex items-center gap-4">
-                      <img 
-                        src={loginData?.image || "https://via.placeholder.com/40"} 
-                        alt="Profile" 
+                      <img
+                        src={loginData?.photoURL || 'https://via.placeholder.com/40'}
+                        alt="Profile"
                         className="w-10 h-10 rounded-full"
                       />
-                      <Upload {...uploadProps}>
-                        <Button type="primary" className="bg-green">Change</Button>
-                      </Upload>
-                      <Button>Remove</Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleUpload(e.target.files[0]);
+                          }
+                        }}
+                      />
                     </div>
                   </Form.Item>
                 </div>
 
-                <div className="mt-8">
-                  <h3 className="text-lg font-medium mb-6">Password change</h3>
-                  <div className="grid grid-cols-2 gap-6">
-                    <Form.Item
-                      label="Current password"
-                      name="currentPassword"
-                    >
-                      <Input.Password />
-                    </Form.Item>
-
-                    <div /> {/* Empty div for grid alignment */}
-
-                    <Form.Item
-                      label="New password"
-                      name="newPassword"
-                    >
-                      <Input.Password />
-                    </Form.Item>
-
-                    <Form.Item
-                      label="Confirm new password"
-                      name="confirmPassword"
-                    >
-                      <Input.Password />
-                    </Form.Item>
-                  </div>
-                </div>
-
-                <Button 
-                  type="primary" 
-                  htmlType="submit"
-                  className="mt-6 bg-green"
-                >
+                <Button type="primary" htmlType="submit" className="mt-6 bg-green">
                   Save Change
                 </Button>
               </Form>
@@ -189,4 +174,4 @@ const uploadProps: UploadProps = {
       </div>
     </>
   );
-} 
+}

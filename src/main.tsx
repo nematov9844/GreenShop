@@ -1,11 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { RouterProvider } from 'react-router-dom';
-import { root } from './rooter/root';  // Routing import
-import ProviderConfig from './tools/Provider';  // ProviderConfig import
+import { router } from './router';
+import ProviderConfig from './tools/Provider';
 
 createRoot(document.getElementById('root')!).render(
   <ProviderConfig>
-    <RouterProvider router={root} />
+    <RouterProvider router={router} />
   </ProviderConfig>
 );

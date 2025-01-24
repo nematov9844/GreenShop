@@ -1,22 +1,25 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface UserData {
-  _id: string;
-  name: string;
-  surname: string;
-  email: string;
-  profile_photo: string;
-  user_type: string;
+  _id?: string;
+  name?: string;
+  surname?: string;
+  email?: string;
+  profile_photo?: string;
+  user_type?: string;
+  displayName?: string;
   photoURL?: string;
-  // qo'shimcha kerakli fieldlarni qo'shish mumkin
+  phone_number?:string;
+  username?:string;
+  phone?:string;
+  address?:string;
+  city?:string;
+  country?:string;
+  zip_code?:string;
 }
 
-interface LoginState {
-  loginData: UserData | null;
-}
-
-const initialState: LoginState = {
-  loginData: null
+const initialState: { loginData: UserData | null } = {
+  loginData: JSON.parse(localStorage.getItem('loginData') || 'null') || {}
 };
 
 const loginDataSlice = createSlice({
@@ -25,6 +28,12 @@ const loginDataSlice = createSlice({
   reducers: {
     setLoginData: (state, action: PayloadAction<UserData | null>) => {
       state.loginData = action.payload;
+      if (action.payload) {
+        localStorage.setItem('loginData', JSON.stringify(action.payload));
+      } else {
+        localStorage.removeItem('loginData');
+        localStorage.removeItem('access_token');
+      }
     },
   },
 });

@@ -1,42 +1,28 @@
-import { Button, Select } from "antd";
+import { Select } from 'antd';
+const { Option } = Select;
 
 interface TopFilterProps {
-  activePath: string;
-  setActivePath: (path: string) => void;
-  sort: string;
-  onSortChange: (sort: string) => void;
+  selectedCategory: string;
+  onSortChange: (value: string) => void;
+  categoryName: string;
 }
 
-export default function TopFilter({ 
-  activePath, 
-  setActivePath,
-  sort,
-  onSortChange
-}: TopFilterProps) {
+export default function TopFilter({  onSortChange, categoryName }: TopFilterProps) {
   return (
-    <div className="flex justify-between items-center mb-6 md:w-[60%] w-full ml-auto">
+    <div className="mb-8 flex justify-between items-center">
+      <h2 className="text-2xl font-bold">{categoryName}</h2>
       <div className="flex gap-4">
-        <Button 
-          type={activePath === "all" ? "primary" : "link"} 
-          className={activePath === "all" ? "bg-green" : "text-gray-500"}
-          onClick={() => setActivePath("all")}
+        <Select
+          defaultValue=""
+          style={{ width: 200 }}
+          onChange={onSortChange}
         >
-          All Plants
-        </Button>
-        <Button type="link">New Arrivals</Button>
-        <Button type="link">Sale</Button>
+          <Option value="">Default Sorting</Option>
+          <Option value="price_asc">Price Low to High</Option>
+          <Option value="price_desc">Price High to Low</Option>
+          <Option value="newest">Newest</Option>
+        </Select>
       </div>
-      <Select
-        value={sort}
-        style={{ width: 200 }}
-        onChange={onSortChange}
-        options={[
-          { value: 'default', label: 'Sort by: Default sorting' },
-          { value: 'price_low', label: 'Price: Low to High' },
-          { value: 'price_high', label: 'Price: High to Low' },
-          { value: 'newest', label: 'Newest' },
-        ]}
-      />
     </div>
   );
 } 

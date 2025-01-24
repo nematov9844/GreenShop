@@ -29,7 +29,7 @@ export default function Wishlist() {
                     Add to Cart
                   </button>
                   <button 
-                    onClick={() => dispatch(removeFromWishlist(item._id))}
+                    onClick={() => dispatch(removeFromWishlist(item?._id as string))}
                     className="text-red-600"
                   >
                     Remove

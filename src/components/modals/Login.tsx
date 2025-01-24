@@ -15,9 +15,10 @@ interface LoginFormData {
   password: string;
 }
 
-interface RegisterFormData extends LoginFormData {
-  username: string;
+interface RegisterData extends LoginFormData {
+  surname: string;
   confirmPassword: string;
+  name: string;
 }
 
 interface UserData {
@@ -27,7 +28,12 @@ interface UserData {
   email: string;
   profile_photo: string;
   user_type: string;
-  // qo'shimcha kerakli fieldlarni qo'shish mumkin
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  zip_code?: string;
+  accessToken?: string;
 }
 
 export default function Login() {
@@ -39,16 +45,22 @@ export default function Login() {
     mutationFn: (data: LoginFormData) => authApi.login(data),
     onSuccess: (response) => {
       const { token, user } = response.data;
-      localStorage.setItem("access_token", token);
       const userData: UserData = {
         _id: user._id,
-        name: user.name,
-        surname: user.surname,
-        email: user.email,
+        name: user.name || "",
+        surname: user.surname || "",
+        email: user.email || undefined,
         profile_photo: user.profile_photo,
         user_type: user.user_type,
+        phone: undefined,
+        address: undefined,
+        city: undefined,
+        country: undefined,
+        zip_code: undefined,
+        accessToken: user.accessToken || ""
       };
       dispatch(setLoginData(userData));
+      localStorage.setItem("access_token", token);
       dispatch(setLoginModal(false));
       message.success("Login successful!");
     },
@@ -58,7 +70,7 @@ export default function Login() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: RegisterFormData) => authApi.register(data),
+    mutationFn: (data: RegisterData) => authApi.register(data),
     onSuccess: (data) => {
       localStorage.setItem("token", data.token);
       message.success("Registration successful!");
@@ -72,8 +84,27 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const email = result.user.email;
-      if (email) {
+      if (result.user) {
+        const token = await result.user.getIdToken();
+        const userData = {
+          displayName: result.user.displayName || "",
+          email: result.user.email || undefined,
+          photoURL: result.user.photoURL || undefined,
+          _id: result.user.uid,
+          name: result.user.displayName || "",
+          surname: "",
+          profile_photo: result.user.photoURL || "",
+          user_type: "user",
+          phone: undefined,
+          address: undefined,
+          city: undefined,
+          country: undefined,
+          zip_code: undefined,
+          accessToken: token
+        };
+        dispatch(setLoginData(userData));
+        localStorage.setItem("access_token", token);
+        dispatch(setLoginModal(false));
         message.success("Google login successful!");
       }
     } catch (error) {
@@ -151,17 +182,25 @@ export default function Login() {
           </button>
         </Form>
       ) : (
-        <Form layout="vertical" onFinish={(data) => registerMutation.mutate(data as RegisterFormData)}>
+        <Form layout="vertical" onFinish={(data) => registerMutation.mutate(data as RegisterData)}>
           <Form.Item
-            name="username"
+            name="surname"
             rules={[{ required: true, message: 'Please input your username!' }]}
+          >
+            <Input 
+              placeholder="name" 
+              className="h-12"
+            />
+          </Form.Item>
+          <Form.Item
+            name="name"
+            rules={[{ required: true, message: 'Please input your name!' }]}
           >
             <Input 
               placeholder="Username" 
               className="h-12"
             />
           </Form.Item>
-
           <Form.Item
             name="email"
             rules={[

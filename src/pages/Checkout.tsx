@@ -1,31 +1,73 @@
-import { useState } from 'react';
+import { Form, Input, Radio, Select, message } from 'antd';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../redux/store';
-import { Form, Input, Select, Radio, Button, message } from 'antd';
-import { Link, useNavigate } from 'react-router-dom';
+import { addOrder, removeFromCart } from '../redux/shopSlice';
 import Header from '../components/Header';
-import { addOrder, fetchCart } from '../redux/shopSlice';
-import PaypalIcon from '../assets/icons/paypal.png';
-import MasterCardIcon from '../assets/icons/mastercard.png';
-import VisaIcon from '../assets/icons/visa.png';
-import AmexIcon from '../assets/icons/amex.png';
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import visa from '../assets/icons/visa.png';
+import mastercard from '../assets/icons/mastercard.png';
+import paypal from '../assets/icons/paypal.png';
+// Country va State options
+const countryStates = {
+  'saudi-arabia': [
+    { value: 'riyadh', label: 'Riyadh' },
+    { value: 'jeddah', label: 'Jeddah' },
+    { value: 'mecca', label: 'Mecca' },
+    { value: 'medina', label: 'Medina' },
+    { value: 'dammam', label: 'Dammam' }
+  ],
+  'uae': [
+    { value: 'dubai', label: 'Dubai' },
+    { value: 'abu-dhabi', label: 'Abu Dhabi' },
+    { value: 'sharjah', label: 'Sharjah' },
+    { value: 'ajman', label: 'Ajman' }
+  ],
+  'uzbekistan': [
+    { value: 'tashkent', label: 'Tashkent' },
+    { value: 'samarkand', label: 'Samarkand' },
+    { value: 'bukhara', label: 'Bukhara' },
+    { value: 'andijan', label: 'Andijan' }
+  ]
+};
+
+const countries = [
+  { value: 'saudi-arabia', label: 'Saudi Arabia' },
+  { value: 'uae', label: 'UAE' },
+  { value: 'uzbekistan', label: 'Uzbekistan' }
+];
+
+// Apartment types
+const apartmentTypes = [
+  { value: 'apartment', label: 'Apartment' },
+  { value: 'house', label: 'House' },
+  { value: 'villa', label: 'Villa' },
+  { value: 'office', label: 'Office' },
+  { value: 'studio', label: 'Studio' }
+];
 
 export default function Checkout() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const [form] = Form.useForm();
-  const [shipToDifferentAddress, setShipToDifferentAddress] = useState(false);
   const { cart } = useSelector((state: RootState) => state.shop);
   const { loginData } = useSelector((state: RootState) => state.loginData);
+  const [selectedCountry, setSelectedCountry] = useState<keyof typeof countryStates>('saudi-arabia');
+  const [form] = Form.useForm();
+console.log(cart);
 
-  const subtotal = cart.reduce((sum, item) => {
-    const price = item.discount ? Number(item.discount_price) : item.price;
-    return sum + (price * (item.quantity || 1));
+  const subtotal = cart.reduce((sum: number, item: { price: number; quantity: number }) => {
+    return sum + (item.price * item.quantity);
   }, 0);
+
   const shipping = 16.00;
   const total = subtotal + shipping;
 
-  const handlePlaceOrder = async (values: any) => {
+  const handleCountryChange = (value: keyof typeof countryStates) => {
+    setSelectedCountry(value);
+    form.setFieldsValue({ state: undefined }); // Reset state when country changes
+  };
+
+  const onFinish = async (values: any) => {
     try {
       if (!loginData) {
         message.error('Please login first');
@@ -33,14 +75,10 @@ export default function Checkout() {
       }
 
       const orderData = {
-        shop_list: cart.map(item => ({
+        shop_list: cart.map((item: { _id: string; quantity: number }) => ({
           _id: item._id,
-          count: item.quantity || 1
+          count: item.quantity
         })),
-        extra_shop_info: {
-          total: total,
-          method: form.getFieldValue('paymentMethod') || "cash-on-delivery"
-        },
         billing_address: {
           name: values.firstName,
           surname: values.lastName,
@@ -49,251 +87,266 @@ export default function Checkout() {
           city: values.city,
           country: values.country,
           zip_code: values.zip
+        },
+        extra_shop_info: {
+          total: total,
+          method: values.paymentMethod || "cash-on-delivery"
         }
       };
 
+      // Order yaratish
       await dispatch(addOrder(orderData)).unwrap();
       message.success('Order placed successfully!');
-      dispatch(fetchCart());
+      
+      // To'lov muvaffaqiyatli bo'lgandan keyin cartni tozalash
+      cart.forEach((item: { _id: string }) => dispatch(removeFromCart(item._id)));
+      
       navigate('/');
     } catch (error) {
-      message.error('Failed to place order');
+      if (error instanceof Error) {
+        message.error(error.message);
+      } else {
+        message.error('Failed to place order');
+      }
     }
   };
 
   return (
-    <>
+    <div>
       <Header />
       <div className="max-w-[1280px] mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-8">
-          <Link to="/" className="text-gray-500">Home</Link>
-          <span>/</span>
-          <Link to="/shop" className="text-gray-500">Shop</Link>
-          <span>/</span>
-          <span>Checkout</span>
+        <div className="text-sm breadcrumbs mb-8">
+          <span>Home</span> / <span>Shop</span> / <span>Checkout</span>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Billing Form */}
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold mb-6">Billing Address</h2>
-            <Form
-              form={form}
-              layout="vertical"
-              initialValues={{
-                firstName: loginData?.name || '',
-                lastName: loginData?.surname || '',
-                country: '',
-                city: '',
-                address: '',
-                state: '',
-                zip: '',
-                email: loginData?.email || '',
-                phone: loginData?.phone || ''
-              }}
-              onFinish={handlePlaceOrder}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Form.Item
-                  label="First Name"
-                  name="firstName"
-                  rules={[{ required: true, message: 'Please input your first name!' }]}
-                >
-                  <Input />
-                </Form.Item>
+        <Form 
+          form={form}
+          layout="vertical" 
+          onFinish={onFinish}
+          initialValues={{
+            firstName: loginData?.name,
+            email: loginData?.email,
+            paymentMethod: 'cash'
+          }}
+        >
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left Side - Billing Form */}
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-6">Billing Address</h2>
+              <div className='w-full'>
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item 
+                    label="First Name" 
+                    name="firstName"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input defaultValue={loginData?.name} />
+                  </Form.Item>
 
-                <Form.Item
-                  label="Last Name"
-                  name="lastName"
-                  rules={[{ required: true, message: 'Please input your last name!' }]}
-                >
-                  <Input />
+                  <Form.Item 
+                    label="Last Name" 
+                    name="lastName"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item 
+                    label="Country / Region" 
+                    name="country"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Select
+                      showSearch
+                      placeholder="Select country"
+                      optionFilterProp="children"
+                      onChange={handleCountryChange}
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={countries}
+                    />
+                  </Form.Item>
+
+                  <Form.Item 
+                    label="State" 
+                    name="state"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Select
+                      showSearch
+                      placeholder={selectedCountry ? "Select state" : "Please select country first"}
+                      optionFilterProp="children"
+                      disabled={!selectedCountry}
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={selectedCountry ? countryStates[selectedCountry] : []}
+                    />
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item 
+                    label="Street Address" 
+                    name="address"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input placeholder="House number and street name" />
+                  </Form.Item>
+
+                  <Form.Item 
+                    label="Apartment Type" 
+                    name="apartment"
+                  >
+                    <Select
+                      showSearch
+                      placeholder="Select apartment type"
+                      optionFilterProp="children"
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={apartmentTypes}
+                    />
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item 
+                    label="ZIP" 
+                    name="zip"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item 
+                    label="Email address" 
+                    name="email"
+                    rules={[{ required: true, message: 'Required', type: 'email' }]}
+                  >
+                    <Input defaultValue={loginData?.email} />
+                  </Form.Item>
+
+                  <Form.Item 
+                    label="Phone Number" 
+                    name="phone"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input addonBefore="+966" />
+                  </Form.Item>
+                </div>
+
+                <Form.Item name="notes" label="Order notes (optional)">
+                  <Input.TextArea rows={4} />
                 </Form.Item>
               </div>
+            </div>
 
-              <Form.Item
-                label="Country / Region"
-                name="country"
-                rules={[{ required: true }]}
-              >
-                <Select placeholder="Select a country">
-                  <Select.Option value="uzbekistan">Uzbekistan</Select.Option>
-                  {/* Add more countries */}
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                label="Town / City"
-                name="city"
-                rules={[{ required: true }]}
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="Street Address"
-                name="address"
-                rules={[{ required: true }]}
-              >
-                <Input.TextArea 
-                  rows={2}
-                  placeholder="House number and street name"
-                />
-              </Form.Item>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Form.Item
-                  label="State"
-                  name="state"
-                  rules={[{ required: true }]}
-                >
-                  <Select placeholder="Select a state">
-                    <Select.Option value="tashkent">Tashkent</Select.Option>
-                    {/* Add more states */}
-                  </Select>
-                </Form.Item>
-
-                <Form.Item
-                  label="ZIP"
-                  name="zip"
-                  rules={[{ required: true }]}
-                >
-                  <Input />
-                </Form.Item>
-              </div>
-
-              <Form.Item
-                label="Email address"
-                name="email"
-                rules={[{ required: true, type: 'email' }]}
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="Phone Number"
-                name="phone"
-                rules={[{ required: true }]}
-              >
-                <Input addonBefore="+998" />
-              </Form.Item>
-
-              <Form.Item>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={shipToDifferentAddress}
-                    onChange={(e) => setShipToDifferentAddress(e.target.checked)}
-                  />
-                  <span>Ship to a different address?</span>
-                </div>
-              </Form.Item>
-
-              {shipToDifferentAddress && (
-                // Shipping address form fields
-                <div className="mt-4">
-                  {/* Add shipping address fields similar to billing fields */}
-                </div>
-              )}
-
-              <Form.Item
-                label="Order notes (optional)"
-                name="notes"
-              >
-                <Input.TextArea 
-                  rows={4}
-                  placeholder="Notes about your order, e.g. special notes for delivery"
-                />
-              </Form.Item>
-
-              <Button 
-                type="primary"
-                className="w-full bg-green"
-                size="large"
-                htmlType="submit"
-              >
-                Place Order
-              </Button>
-            </Form>
-          </div>
-
-          {/* Order Summary */}
-          <div className="lg:w-[400px]">
-            <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-xl font-bold mb-6">Your Order</h2>
-              
-              <div className="border-b pb-4 mb-4">
-                <div className="flex justify-between font-medium mb-2">
-                  <span>Products</span>
-                  <span>Subtotal</span>
-                </div>
-                {cart.map((item) => (
-                  <div key={item._id} className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
+            {/* Right Side - Order Summary */}
+            <div className="w-full lg:w-[450px]">
+              <div className="bg-gray-50 p-6 rounded-lg sticky top-4">
+                <h2 className="text-xl font-bold mb-6">Your Order</h2>
+                
+                {/* Products List */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between pb-2 border-b">
+                    <span className="text-gray-600">Products</span>
+                    <span className="text-gray-600">Subtotal</span>
+                  </div>
+                  {cart?.map((item) => (
+                    <div key={item._id} className="flex items-center gap-3 pb-4 border-b">
                       <img 
                         src={item.main_image} 
-                        alt={item.title}
-                        className="w-12 h-12 object-cover rounded"
+                        alt={item.title} 
+                        className="w-16 h-16 object-cover rounded"
                       />
-                      <div>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-sm text-gray-500">× {item.quantity}</p>
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.title}</h3>
+                        <p className="text-sm text-gray-500">SKU: {item._id}</p>
+                        <p className="text-sm text-green">(x{item.quantity})</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                       </div>
                     </div>
-                    <span>${(item.price * (item.quantity || 1)).toFixed(2)}</span>
+                  ))}
+                </div>
+
+                {/* Order Summary */}
+                <div className="space-y-3">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
                   </div>
-                ))}
-              </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Shipping</span>
+                    <div className="text-right">
+                      <span>${shipping.toFixed(2)}</span>
+                      <p className="text-xs text-green underline cursor-pointer">
+                        View shipping charge
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Coupon Discount</span>
+                    <span>(-) $0.00</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg pt-3 border-t">
+                    <span>Total</span>
+                    <span className="text-green">${total.toFixed(2)}</span>
+                  </div>
+                </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                {/* Coupon Code */}
+                <div className="mt-4 mb-6">
+                  <p className="text-sm text-gray-600">
+                    Have a coupon code? <span className="text-green cursor-pointer">Click here</span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>${shipping.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold pt-2 border-t">
-                  <span>Total</span>
-                  <span className="text-green">${total.toFixed(2)}</span>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <Radio.Group className="w-full">
-                  <div className="space-y-2">
-                    <Radio value="direct" className="w-full p-3 border rounded">
-                      Direct bank transfer
-                    </Radio>
-                    <Radio value="card" className="w-full p-3 border rounded flex items-center gap-2">
+                {/* Payment Method */}
+                <Form.Item 
+                  name="paymentMethod" 
+                  label="Payment Method"
+                  className="mb-4"
+                >
+                  <Radio.Group className="w-full space-y-2">
+                    <Radio value="card" className="w-full border p-3 rounded flex items-center">
                       <span>Credit Card</span>
-                      <div className="flex gap-2">
-                      <img src={PaypalIcon} alt="PayPal" className="h-6" />
-                <img src={MasterCardIcon} alt="MasterCard" className="h-6" />
-                <img src={VisaIcon} alt="Visa" className="h-6" />
-                <img src={AmexIcon} alt="American Express" className="h-6" />
+                      <div className="ml-auto flex gap-2">
+                        <img src={paypal} alt="PayPal" className="h-6" />
+                        <img src={visa} alt="Visa" className="h-6" />
+                        <img src={mastercard} alt="Mastercard" className="h-6" />
                       </div>
                     </Radio>
-                    <Radio value="cash" className="w-full p-3 border rounded">
+                    <Radio value="bank" className="w-full border p-3 rounded">
+                      Direct bank transfer
+                    </Radio>
+                    <Radio value="cash" className="w-full border p-3 rounded">
                       Cash on delivery
                     </Radio>
-                  </div>
-                </Radio.Group>
+                  </Radio.Group>
+                </Form.Item>
 
-                <Button 
-                  type="primary"
-                  className="w-full bg-green"
-                  size="large"
-                >
-                  Place Order
-                </Button>
+                {/* Place Order Button */}
+                <Form.Item>
+                  <button 
+                    type="submit"
+                    className="w-full bg-green text-white py-3 rounded-lg font-medium hover:bg-green-600"
+                  >
+                    Place Order
+                  </button>
+                </Form.Item>
               </div>
             </div>
           </div>
-        </div>
+        </Form>
       </div>
-    </>
+    </div>
   );
 } 

@@ -1,5 +1,6 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { useAxios } from '../hook/useAxios';
+import { RootState } from './store';
 
 // Async actions
 export const fetchOrders = createAsyncThunk(
@@ -16,27 +17,42 @@ export const fetchOrders = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error  || null);
     }
   }
 );
 
 export const addOrder = createAsyncThunk(
   'shop/addOrder',
-  async (orderData, { rejectWithValue }) => {
+  async (orderData: {
+    shop_list: { _id: string; count: number }[];
+    billing_address: {
+      name: string;
+      surname: string;
+      phone: string;
+      address: string;
+      city: string;
+      country: string;
+      zip_code: string;
+    };
+    extra_shop_info: {
+      total: number;
+      method: string;
+    };
+  }, { rejectWithValue }) => {
     try {
       const axiosRequest = useAxios();
       const response = await axiosRequest({
         url: '/order/make-order',
         method: 'POST',
         headers: {
-          Authorization: localStorage.getItem('token')
+          Authorization: localStorage.getItem('access_token')
         },
         body: orderData
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error || null);
     }
   }
 );
@@ -56,7 +72,7 @@ export const deleteOrder = createAsyncThunk(
       });
       return orderId;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error || null);
     }
   }
 );
@@ -101,7 +117,7 @@ export const addToCartAsync = createAsyncThunk(
       });
       return { product, orderData: response.data };
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error || null);
     }
   }
 );
@@ -109,39 +125,36 @@ export const addToCartAsync = createAsyncThunk(
 // Cartni olish uchun action
 export const fetchCart = createAsyncThunk(
   'shop/fetchCart',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
       const axiosRequest = useAxios();
-      const response = await axiosRequest({
-        url: '/order/get-order',
-        method: 'GET',
-        headers: {
-          Authorization: localStorage.getItem('token')
-        }
-      });
-      
-      // Barcha buyurtmalardan shop_list'i bor bo'lganlarini olamiz
-      const ordersWithItems = response.data.filter(order => 
-        order.shop_list && order.shop_list.length > 0
+      const state = getState() as RootState;
+      const cartItems = state.shop.cart;
+
+      if (!cartItems.length) return [];
+
+      const cartProducts = await Promise.all(
+        cartItems.map(async (item) => {
+          try {
+            const response = await axiosRequest({
+              url: `/flower/category/${item.category_path}/${item._id}`,
+              method: 'GET'
+            });
+            return {
+              ...response.data,
+              quantity: item.quantity,
+              category_path: item.category_path
+            };
+          } catch (error) {
+            console.error(`Error fetching product ${item._id}:`, error);
+            return null;
+          }
+        })
       );
 
-      // Eng so'nggi buyurtmani olamiz
-      const latestOrder = ordersWithItems[ordersWithItems.length - 1];
-      
-      if (latestOrder && latestOrder.shop_list) {
-        return latestOrder.shop_list.map(item => ({
-          _id: item._id,
-          title: item.title,
-          main_image: item.main_image,
-          price: item.price,
-          discount: item.discount,
-          discount_price: item.discount_price,
-          quantity: item.count || 1,
-          orderId: latestOrder._id
-        }));
-      }
-      return [];
+      return cartProducts.filter(Boolean); // Remove null values
     } catch (error) {
+      console.error('Fetch cart error:', error);
       return rejectWithValue(error);
     }
   }
@@ -170,83 +183,103 @@ export const deleteCartItem = createAsyncThunk(
   }
 );
 
-interface ProductType {
-  _id: string;
+// CartItem interfeysi
+export interface CartItem {
+  _id: string | number;
   title: string;
-  main_image: string;
   price: number;
   discount: boolean;
-  discount_price: string;
-  quantity?: number;
+  discount_price: number; // number turida
+  main_image: string;
+  category_path?: string;
+  quantity: number;
+  size?: string; // optional
 }
 
-interface ShopState {
-  cart: ProductType[];
-  wishlist: ProductType[];
-  selectedProduct: ProductType | null;
-  orders: any[];
-  loading: boolean;
-  error: any;
+// ProductType interfeysi
+export interface ProductType {
+  _id?: string;
+title?: string;
+main_image?: string;
+detailed_images?: string[];
+price?: number;
+discount?: boolean;
+discount_price?: string | number;
+description?: string;
+size?: string;
+sku?: string;
+category?: string;
 }
 
-const initialState: ShopState = {
-  cart: [],
-  wishlist: [],
+// Cart va wishlist ni localStorage dan olish
+const getInitialState = () => ({
+  cart: [] as CartItem[],
+  cartProducts: [] as CartItem[],
+  wishlist: [] as ProductType[],
   selectedProduct: null,
   orders: [],
   loading: false,
   error: null
-};
+});
 
 const shopSlice = createSlice({
   name: 'shop',
-  initialState,
+  initialState: getInitialState(),
   reducers: {
     addToCart: (state, action: PayloadAction<ProductType>) => {
-      const existingProduct = state.cart.find(item => item._id === action.payload._id);
+      const cartItem: CartItem = {
+        ...action.payload,
+        category_path: action.payload.category_path || 'house-plants',
+        quantity: 1
+      };
+
+      const existingItem = state.cart.find(item => item._id === cartItem._id);
       
-      if (existingProduct) {
-        // Agar mahsulot mavjud bo'lsa, uning sonini oshiramiz
-        existingProduct.quantity = (existingProduct.quantity || 1) + 1;
+      if (existingItem) {
+        existingItem.quantity += 1;
       } else {
-        // Agar mahsulot mavjud bo'lmasa, yangi mahsulot qo'shamiz
-        state.cart.push({ ...action.payload, quantity: 1 });
+        state.cart.push(cartItem);
       }
+      
+      localStorage.setItem('cart', JSON.stringify(state.cart));
     },
-    
-    removeFromCart: (state, action: PayloadAction<string>) => {
-      state.cart = state.cart.filter(item => item._id !== action.payload);
-    },
-    
+
     addToWishlist: (state, action: PayloadAction<ProductType>) => {
       const existingProduct = state.wishlist.find(item => item._id === action.payload._id);
       if (!existingProduct) {
         state.wishlist.push(action.payload);
+        localStorage.setItem('wishlist', JSON.stringify(state.wishlist));
       }
     },
-    
+
+    updateCartQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
+      const cartItem = state.cart.find(item => item._id === action.payload.id);
+      const productItem = state.cartProducts.find(item => item._id === action.payload.id);
+      
+      if (cartItem && productItem && action.payload.quantity > 0) {
+        cartItem.quantity = action.payload.quantity;
+        productItem.quantity = action.payload.quantity;
+        localStorage.setItem('cart', JSON.stringify(state.cart));
+      }
+    },
+
+    removeFromCart: (state, action: PayloadAction<string>) => {
+      console.log(state.cart)
+      console.log(action.payload)
+      try {
+        state.cart = state.cart.filter(item => item._id !== action.payload);
+        state.cartProducts = state.cartProducts.filter(item => item._id !== action.payload);
+        localStorage.setItem('cart', JSON.stringify(state.cart));
+      } catch (error) {
+        console.error('Error removing item from cart:', error);
+        throw error;
+      }
+    },
+
     removeFromWishlist: (state, action: PayloadAction<string>) => {
       state.wishlist = state.wishlist.filter(item => item._id !== action.payload);
+      localStorage.setItem('wishlist', JSON.stringify(state.wishlist));
     },
-    
-    setSelectedProduct: (state, action: PayloadAction<ProductType | null>) => {
-      state.selectedProduct = action.payload;
-    },
-
-    // Mahsulot sonini o'zgartirish uchun yangi action
-    updateCartItemQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
-      const product = state.cart.find(item => item._id === action.payload.id);
-      if (product) {
-        product.quantity = action.payload.quantity;
-      }
-    },
-
-    updateQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
-      const item = state.cart.find(item => item._id === action.payload.id);
-      if (item && action.payload.quantity > 0) {
-        item.quantity = action.payload.quantity;
-      }
-    }
   },
   extraReducers: (builder) => {
     builder
@@ -283,6 +316,7 @@ const shopSlice = createSlice({
         } else {
           state.cart.push({ ...action.payload.product, quantity: 1 });
         }
+        saveCartToStorage(state.cart);
       })
       .addCase(addToCartAsync.rejected, (state, action) => {
         state.loading = false;
@@ -294,7 +328,8 @@ const shopSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.loading = false;
-        state.cart = action.payload;
+        state.cartProducts = action.payload;
+        console.log('Fetched cart products:', action.payload);
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading = false;
@@ -303,6 +338,7 @@ const shopSlice = createSlice({
       // Delete cart item
       .addCase(deleteCartItem.fulfilled, (state, action) => {
         state.cart = state.cart.filter(item => item.orderId !== action.payload);
+        saveCartToStorage(state.cart);
       });
   }
 });
@@ -312,9 +348,11 @@ export const {
   removeFromCart, 
   addToWishlist, 
   removeFromWishlist, 
-  setSelectedProduct,
-  updateCartItemQuantity,
-  updateQuantity
+  updateCartQuantity
 } = shopSlice.actions;
+
+const saveCartToStorage = (cart: CartItem[]) => {
+  localStorage.setItem('cart', JSON.stringify(cart));
+};
 
 export default shopSlice.reducer;
