@@ -9,13 +9,13 @@ interface UserData {
   user_type?: string;
   displayName?: string;
   photoURL?: string;
-  phone_number?:string;
-  username?:string;
-  phone?:string;
-  address?:string;
-  city?:string;
-  country?:string;
-  zip_code?:string;
+  phone_number?: string;
+  username?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  zip_code?: string;
 }
 
 const initialState: { loginData: UserData | null } = {
@@ -35,8 +35,14 @@ const loginDataSlice = createSlice({
         localStorage.removeItem('access_token');
       }
     },
+    updateUser: (state, action: PayloadAction<UserData>) => {
+      console.log(action.payload);
+      
+      state.loginData = { ...state.loginData, ...action.payload };
+      localStorage.setItem("loginData", JSON.stringify({ ...state.loginData, ...action.payload }))
+    },
   },
 });
 
-export const { setLoginData } = loginDataSlice.actions;
+export const { setLoginData, updateUser } = loginDataSlice.actions;
 export default loginDataSlice.reducer; 

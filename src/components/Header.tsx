@@ -211,12 +211,7 @@ export default function Header() {
               <SearchOutlined />
             </button>
 
-            {/* Wishlist */}
-            <Link to="/wishlist">
-              <Badge count={wishlist.length} color="#46A358">
-                <HeartOutlined className="text-xl text-gray-600 hover:text-green transition-colors" />
-              </Badge>
-            </Link>
+          
 
             {/* Cart */}
             <Link to="/cart">

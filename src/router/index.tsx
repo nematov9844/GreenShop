@@ -7,6 +7,9 @@ import Wishlist from "../pages/Wishlist";
 import User from "../pages/User";
 import ProductDetails from "../pages/ProductDetails";
 import Checkout from "../pages/Checkout";
+import BlogPage from '../pages/Blog';
+import BlogDetail from '../pages/BlogDetail';
+import UserDetail from "../pages/UserDetail";
 
 export const router = createBrowserRouter([
   {
@@ -68,5 +71,17 @@ export const router = createBrowserRouter([
       
  
     ]
+  },
+  {
+    path: "/blogs",
+    element: <BlogPage />
+  },
+  {
+    path: "/blog/:id",
+    element: <BlogDetail />
+  },
+  {
+    path:"user/:id",
+    element:<UserDetail/>
   }
 ]); 

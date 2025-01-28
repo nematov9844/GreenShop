@@ -1,4 +1,4 @@
-import { Form, Input, Radio, Select, message } from 'antd';
+import { Form, Input, Radio, Select, message, Modal, Button, List } from 'antd';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../redux/store';
 import { addOrder, removeFromCart } from '../redux/shopSlice';
@@ -8,6 +8,7 @@ import { useState } from 'react';
 import visa from '../assets/icons/visa.png';
 import mastercard from '../assets/icons/mastercard.png';
 import paypal from '../assets/icons/paypal.png';
+import { useAxios } from '../hook/useAxios';
 // Country va State options
 const countryStates = {
   'saudi-arabia': [
@@ -53,7 +54,8 @@ export default function Checkout() {
   const { loginData } = useSelector((state: RootState) => state.loginData);
   const [selectedCountry, setSelectedCountry] = useState<keyof typeof countryStates>('saudi-arabia');
   const [form] = Form.useForm();
-console.log(cart);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const axios = useAxios();
 
   const subtotal = cart.reduce((sum: number, item: { price: number; quantity: number }) => {
     return sum + (item.price * item.quantity);
@@ -109,6 +111,58 @@ console.log(cart);
         message.error('Failed to place order');
       }
     }
+  };
+
+  const showModal = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleOk = async () => {
+    const userId = loginData?._id; // Foydalanuvchi ID ni oling
+    const shopList = cart.map(item => ({
+      _id: item._id,
+      title: item.title,
+      price: item.price,
+      quantity: item.quantity,
+      discount: item.discount,
+      discount_price: item.discount_price,
+      short_description: item.short_description,
+      description: item.description,
+      main_image: item.main_image,
+    }));
+
+    // Billing address va extra shop info ni olish
+    const billingAddress = {
+      name: form.getFieldValue('firstName'),
+      surname: form.getFieldValue('lastName'),
+      phone: form.getFieldValue('phone'),
+      address: form.getFieldValue('address'),
+      city: form.getFieldValue('city'),
+      country: form.getFieldValue('country'),
+      zip_code: form.getFieldValue('zip'),
+    };
+
+    const extraShopInfo = {
+      total: total,
+      method: form.getFieldValue('paymentMethod') || "cash-on-delivery",
+    };
+
+    try {
+      await axios({
+        url: '/order/make-order',
+        method: 'POST',
+        body: { shop_list: shopList, userId, billing_address: billingAddress, extra_shop_info: extraShopInfo },
+      });
+      setIsModalVisible(false);
+      message.success('Order placed successfully!');
+      navigate('/');
+    } catch (error) {
+      console.error('Order placement failed:', error);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsModalVisible(false);
   };
 
   return (
@@ -335,18 +389,62 @@ console.log(cart);
 
                 {/* Place Order Button */}
                 <Form.Item>
-                  <button 
-                    type="submit"
+                  <Button 
+                    type="primary"
+                    onClick={showModal}
                     className="w-full bg-green text-white py-3 rounded-lg font-medium hover:bg-green-600"
                   >
                     Place Order
-                  </button>
+                  </Button>
                 </Form.Item>
               </div>
             </div>
           </div>
         </Form>
       </div>
+      <Modal
+        title="Your Order"
+        visible={isModalVisible}
+        onOk={handleOk}
+        onCancel={handleCancel}
+        footer={[
+          <Button key="back" onClick={handleCancel}>
+            Cancel
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleOk}>
+            Confirm Order
+          </Button>,
+        ]}
+        className="checkout-modal"
+      >
+        <div className="modal-content">
+          <h3 className="text-lg font-bold mb-4">Order Details</h3>
+          <List
+            itemLayout="horizontal"
+            dataSource={cart}
+            renderItem={item => (
+              <List.Item
+                actions={[
+                  <Button type="link">-</Button>,
+                  <span>{item.quantity}</span>,
+                  <Button type="link">+</Button>,
+                  <Button type="link" danger>Remove</Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={<img src={item.main_image} alt={item.title} className="w-16 h-16 object-cover rounded" />}
+                  title={item.title}
+                  description={`SKU: ${item._id} - $${item.price}`}
+                />
+              </List.Item>
+            )}
+          />
+          <div className="flex justify-between font-bold mt-4">
+            <span>Total:</span>
+            <span>${total.toFixed(2)}</span>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 } 

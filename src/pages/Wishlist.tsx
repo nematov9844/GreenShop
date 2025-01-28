@@ -1,7 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../redux/store';
 import { removeFromWishlist, addToCart } from '../redux/shopSlice';
-import Header from '../components/Header';
 
 export default function Wishlist() {
   const wishlist = useSelector((state: RootState) => state.shop.wishlist);
@@ -9,9 +8,7 @@ export default function Wishlist() {
 
   return (
     <div>
-      <Header />
       <div className="max-w-[1280px] mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Wishlist</h1>
         {wishlist.length === 0 ? (
           <p>Your wishlist is empty</p>
         ) : (
